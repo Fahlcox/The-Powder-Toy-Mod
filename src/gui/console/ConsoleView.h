@@ -18,6 +18,7 @@ class ConsoleView: public ui::Window
 	bool doClose = false;
 	String newCommand;
 	bool editingNewCommand = true;
+	ui::Button * autoBuilderButton;
 public:
 	ConsoleView();
 	void OnDraw() override;

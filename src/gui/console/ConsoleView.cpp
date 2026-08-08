@@ -5,8 +5,11 @@
 #include "ConsoleCommand.h"
 #include "gui/interface/Label.h"
 #include "gui/interface/Textbox.h"
+#include "gui/interface/Button.h"
 #include "gui/interface/Engine.h"
 #include "SimulationConfig.h"
+#include "gui/Style.h"
+#include "gui/dialogues/AutoBuilderPrompt.h"
 #include <deque>
 #include <SDL.h>
 
@@ -14,13 +17,22 @@ ConsoleView::ConsoleView():
 	ui::Window(ui::Point(0, 0), ui::Point(WINDOWW, 150)),
 	commandField(nullptr)
 {
-	commandField = new ui::Textbox(ui::Point(0, Size.Y-16), ui::Point(Size.X, 16), "");
+	commandField = new ui::Textbox(ui::Point(0, Size.Y-16), ui::Point(Size.X - 85, 16), "");
 	commandField->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	commandField->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	commandField->SetActionCallback({ [this] { commandField->SetDisplayText(c->FormatCommand(commandField->GetText())); } });
 	AddComponent(commandField);
 	FocusComponent(commandField);
 	commandField->SetBorder(false);
+
+	autoBuilderButton = new ui::Button(ui::Point(Size.X - 85, Size.Y - 16), ui::Point(85, 16), "Auto Builder", "Open Auto Builder & Lua Script Loader");
+	autoBuilderButton->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
+	autoBuilderButton->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	autoBuilderButton->Appearance.TextInactive = style::Colour::WarningTitle;
+	autoBuilderButton->SetActionCallback({ [this] {
+		ui::Engine::Ref().ShowWindow(new AutoBuilderPrompt());
+	} });
+	AddComponent(autoBuilderButton);
 }
 
 void ConsoleView::DoKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt)
@@ -128,4 +140,3 @@ void ConsoleView::OnTick()
 ConsoleView::~ConsoleView()
 {
 }
-
