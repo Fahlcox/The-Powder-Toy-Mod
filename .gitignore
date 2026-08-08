@@ -35,6 +35,7 @@ config.log
 *.def
 *.pref
 *.lua
+!src/lua/luascripts/*.lua
 screenshot_*
 
 # Visual studio
