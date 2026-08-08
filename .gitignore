@@ -37,6 +37,7 @@ config.log
 *.lua
 !src/lua/luascripts/*.lua
 screenshot_*
+!resources/generated_icons/*.png
 
 # Visual studio
 /Debug/
