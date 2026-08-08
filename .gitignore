@@ -10,6 +10,7 @@
 !meson_options.txt
 !.github/*.sh
 !.github/*.py
+!resources/*.py
 
 # Build files
 build*/*
