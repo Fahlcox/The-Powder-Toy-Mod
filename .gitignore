@@ -11,6 +11,7 @@
 !.github/*.sh
 !.github/*.py
 !resources/*.py
+!android/*.py
 
 # Build files
 build*/*
