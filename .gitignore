@@ -1,6 +1,5 @@
 # Misc extensions, system files
 *.zip
-*.txt
 *.gz
 *.out
 *.sh
@@ -10,6 +9,7 @@
 *.swp
 *~
 .DS_Store
+!meson_options.txt
 
 # Build files
 build*/*
