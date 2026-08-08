@@ -290,6 +290,11 @@ try:
 	set_output('publish_matrix', json.dumps({ 'include': publish_matrix }))
 	set_output('do_release', do_release and 'yes' or 'no')
 	set_output('do_publish', do_publish and 'yes' or 'no')
+except subprocess.CalledProcessError as e:
+	print("Meson failed with exit code:", e.returncode)
+	print("STDOUT:\n", e.stdout)
+	print("STDERR:\n", e.stderr)
+	sys.exit(1)
 except Exception as e:
 	import traceback
 	traceback.print_exc()
