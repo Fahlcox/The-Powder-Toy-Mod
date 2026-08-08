@@ -18,7 +18,15 @@ def set_output(key, value):
 		print(f"Output: {key}={value}")
 
 try:
-	subprocess.run([ 'meson', 'setup', '-Dprepare=true', 'build-prepare' ], check = True)
+	try:
+	res = subprocess.run([ 'meson', 'setup', '-Dprepare=true', 'build-prepare' ], check = True, capture_output=True, text=True)
+	print("Meson stdout:", res.stdout)
+	print("Meson stderr:", res.stderr)
+except subprocess.CalledProcessError as e:
+	print("Meson failed with code:", e.returncode)
+	print("Stdout:", e.stdout)
+	print("Stderr:", e.stderr)
+	raise
 	build_options = {}
 	with open('build-prepare/meson-info/intro-buildoptions.json') as f:
 		for option in json.loads(f.read()):
