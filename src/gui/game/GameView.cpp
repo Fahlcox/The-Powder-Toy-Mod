@@ -35,6 +35,7 @@
 #include "gui/dialogues/ConfirmPrompt.h"
 #include "gui/dialogues/ErrorMessage.h"
 #include "gui/dialogues/InformationMessage.h"
+#include "gui/interface/Label.h"
 #include "gui/interface/Button.h"
 #include "gui/interface/Colour.h"
 #include "gui/interface/Engine.h"
@@ -331,6 +332,12 @@ GameView::GameView():
 	autoBuilderButton->Appearance.Margin = ui::Border(0, 2, 3, 2);
 	autoBuilderButton->SetActionCallback({ [this] { c->OpenAutoBuilder(); } });
 	AddComponent(autoBuilderButton);
+
+	ui::Label * arrowLabel = new ui::Label(ui::Point(WINDOWW-42, WINDOWH-48), ui::Point(24, 15), "<--");
+	arrowLabel->SetTextColour(style::Colour::WarningTitle);
+	arrowLabel->Appearance.HorizontalAlign = ui::Appearance::AlignRight;
+	arrowLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(arrowLabel);
 
 	colourPicker = new ui::Button(ui::Point((XRES/2)-8, YRES+1), ui::Point(16, 16), "", "Pick Colour");
 	colourPicker->SetActionCallback({ [this] { c->OpenColourPicker(); } });
