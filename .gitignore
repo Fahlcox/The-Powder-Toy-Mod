@@ -2,14 +2,14 @@
 *.zip
 *.gz
 *.out
-*.sh
-*.py
 *.png
 *.ppm
 *.swp
 *~
 .DS_Store
 !meson_options.txt
+!.github/*.sh
+!.github/*.py
 
 # Build files
 build*/*
