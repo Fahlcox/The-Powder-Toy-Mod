@@ -2,6 +2,7 @@
 #include "client/http/Request.h"
 #include "common/platform/Platform.h"
 #include "common/tpt-rand.h"
+#include "common/Defer.h"
 #include "compat_lua.h"
 #include "gui/game/GameController.h"
 #include "gui/game/GameModel.h"
@@ -539,10 +540,21 @@ int CommandInterface::Command(String command)
 	auto *L = lsi->L;
 	lastError = "";
 	lsi->luacon_hasLastError = false;
-	if (command[0] == '!')
+	if (command.size() && command[0] == '!')
 	{
-		int ret = PlainCommand(command.Substr(1));
-		lastError = GetLastError();
+		int ret = -1;
+		try
+		{
+			ret = PlainCommand(command.Substr(1));
+		}
+		catch (const std::exception &e)
+		{
+			lastError = ByteString(e.what()).FromUtf8();
+		}
+		catch (...)
+		{
+			lastError = "Unknown error";
+		}
 		return ret;
 	}
 	else
@@ -557,63 +569,84 @@ int CommandInterface::Command(String command)
 			SetLastError(lastError);
 			lsi->luacon_hasLastError = true;
 		};
-		if (lsi->lastCode.length())
-			lsi->lastCode += "\n";
-		lsi->lastCode += command;
-		ByteString tmp = ("return " + lsi->lastCode).ToUtf8();
-		luaL_loadbuffer(L, tmp.data(), tmp.size(), "@console");
-		if (lua_type(L, -1) != LUA_TFUNCTION)
+		Defer clearLogSink([&]() {
+			lsi->gameModel->logSink = nullptr;
+		});
+		try
 		{
-			lua_pop(L, 1);
-			ByteString lastCodeUtf8 = lsi->lastCode.ToUtf8();
-			luaL_loadbuffer(L, lastCodeUtf8.data(), lastCodeUtf8.size(), "@console");
-		}
-		if (lua_type(L, -1) != LUA_TFUNCTION)
-		{
-			lastError = LuaGetError();
-			String err = lastError;
-			if (err.Contains("near '<eof>'")) //the idea stolen from lua-5.1.5/lua.c
-				lastError = "...";
-			else
-				lsi->lastCode = "";
-		}
-		else
-		{
-			lsi->lastCode = "";
-			ret = tpt_lua_pcall(L, 0, LUA_MULTRET, 0, eventTraitInterface);
-			if (ret)
+			if (lsi->lastCode.length())
+				lsi->lastCode += "\n";
+			lsi->lastCode += command;
+			ByteString tmp = ("return " + lsi->lastCode).ToUtf8();
+			luaL_loadbuffer(L, tmp.data(), tmp.size(), "@console");
+			if (lua_type(L, -1) != LUA_TFUNCTION)
+			{
+				lua_pop(L, 1);
+				ByteString lastCodeUtf8 = lsi->lastCode.ToUtf8();
+				luaL_loadbuffer(L, lastCodeUtf8.data(), lastCodeUtf8.size(), "@console");
+			}
+			if (lua_type(L, -1) != LUA_TFUNCTION)
 			{
 				lastError = LuaGetError();
+				String err = lastError;
+				if (err.Contains("near '<eof>'")) //the idea stolen from lua-5.1.5/lua.c
+					lastError = "...";
+				else
+					lsi->lastCode = "";
 			}
 			else
 			{
-				String text = "";
-				bool hasText = false;
-				for (level++; level <= lua_gettop(L); level++)
+				lsi->lastCode = "";
+				ret = tpt_lua_pcall(L, 0, LUA_MULTRET, 0, eventTraitInterface);
+				if (ret)
 				{
-					LuaToLoggableString(L, level);
-					if (hasText)
-					{
-						text += ", " + tpt_lua_optString(L, -1, "");
-					}
-					else
-					{
-						text = tpt_lua_optString(L, -1, "");
-						hasText = true;
-					}
-					lua_pop(L, 1);
+					lastError = LuaGetError();
 				}
-				if (text.length())
+				else
 				{
-					if (lastError.length())
-						lastError += "; " + text;
-					else
-						lastError = text;
-				}
+					String text = "";
+					bool hasText = false;
+					for (level++; level <= lua_gettop(L); level++)
+					{
+						LuaToLoggableString(L, level);
+						if (hasText)
+						{
+							text += ", " + tpt_lua_optString(L, -1, "");
+						}
+						else
+						{
+							text = tpt_lua_optString(L, -1, "");
+							hasText = true;
+						}
+						lua_pop(L, 1);
+					}
+					if (text.length())
+					{
+						if (lastError.length())
+							lastError += "; " + text;
+						else
+							lastError = text;
+					}
 
+				}
 			}
 		}
-		lsi->gameModel->logSink = nullptr;
+		catch (const std::exception &e)
+		{
+			// A C++ exception escaping Lua (a lua_atpanic, an error from a C++
+			// binding, a bad_alloc, ...) must never crash the game - especially
+			// on mobile where it would just close the app. Turn it into a Lua
+			// error message instead and drop the half-entered input.
+			lastError = "Lua error: " + ByteString(e.what()).FromUtf8();
+			lsi->lastCode = "";
+			ret = -1;
+		}
+		catch (...)
+		{
+			lastError = "Lua error: unknown exception";
+			lsi->lastCode = "";
+			ret = -1;
+		}
 		return ret;
 	}
 }

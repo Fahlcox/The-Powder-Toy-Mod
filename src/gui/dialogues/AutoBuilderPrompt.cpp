@@ -98,12 +98,31 @@ AutoBuilderPrompt::AutoBuilderPrompt():
 	runButton->Appearance.TextInactive = style::Colour::WarningTitle;
 	runButton->SetActionCallback({ [this] {
 		String code = textField->GetText();
+		String error;
+		try
+		{
+			int ret = CommandInterface::Ref().Command(code);
+			if (ret)
+				error = CommandInterface::Ref().GetLastError();
+		}
+		catch (const std::exception &e)
+		{
+			error = ByteString(e.what()).FromUtf8();
+		}
+		catch (...)
+		{
+			error = "Unknown error while running the script";
+		}
 		CloseActiveWindow();
-		CommandInterface::Ref().Command(code);
+		if (error.length())
+			CommandInterface::Ref().Log(CommandInterface::LogError, error);
 		SelfDestruct();
 	} });
 	AddComponent(runButton);
-	SetOkayButton(runButton);
+	// Note: deliberately NOT SetOkayButton(runButton). The editor is multiline,
+	// so pressing Enter must insert a line break, not run the script and close
+	// the editor out from under the user.
+
 
 	MakeActiveWindow();
 }

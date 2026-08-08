@@ -25,7 +25,19 @@ void ConsoleController::EvaluateCommand(String command)
 	{
 		if (command.BeginsWith("!load "))
 			CloseConsole();
-		int returnCode = commandInterface->Command(command);
+		int returnCode = -1;
+		try
+		{
+			returnCode = commandInterface->Command(command);
+		}
+		catch (const std::exception &e)
+		{
+			commandInterface->SetLastError(ByteString(e.what()).FromUtf8());
+		}
+		catch (...)
+		{
+			commandInterface->SetLastError("Unknown error");
+		}
 		consoleModel->AddLastCommand(ConsoleCommand(command, returnCode, commandInterface->GetLastError()));
 	}
 	else
@@ -39,7 +51,18 @@ void ConsoleController::CloseConsole()
 
 String ConsoleController::FormatCommand(String command)
 {
-	return commandInterface->FormatCommand(command);
+	try
+	{
+		return commandInterface->FormatCommand(command);
+	}
+	catch (const std::exception &e)
+	{
+		return ByteString(e.what()).FromUtf8();
+	}
+	catch (...)
+	{
+		return String("Unknown error");
+	}
 }
 
 void ConsoleController::NextCommand()

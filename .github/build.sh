@@ -231,7 +231,15 @@ fi
 
 meson_configure=meson$'\t'setup
 if [[ $BSH_DEBUG_RELEASE == release ]]; then
-	meson_configure+=$'\t'-Dbuildtype=debugoptimized
+	if [[ $BSH_HOST_PLATFORM == android ]]; then
+		# Android devices (especially low-end phones) benefit a lot from a full
+		# release build: -O3 and the fast-math / vectorization flags that meson
+		# only applies to non-debug build types. (LTO is already enabled for
+		# release-static builds, which is what Android uses.)
+		meson_configure+=$'\t'-Dbuildtype=release
+	else
+		meson_configure+=$'\t'-Dbuildtype=debugoptimized
+	fi
 fi
 if [[ $BSH_HOST_PLATFORM == darwin ]]; then
 	meson_configure+=$'\t'-Dmanifest_macos_min_ver=$macos_min_ver

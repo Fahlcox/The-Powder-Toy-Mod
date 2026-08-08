@@ -33,7 +33,7 @@ namespace
 			float pGravX = 0;
 			float pGravY = 0;
 		};
-		void MovementPhase(int i, Neighbourhood neighbourhood);
+		void MovementPhase(int i, const Neighbourhood &neighbourhood);
 		Neighbourhood GetNeighbourhood(int i) const;
 		bool TransitionPhase(int i, const Neighbourhood &neighbourhood);
 
@@ -2269,6 +2269,7 @@ SimulationImpl::Neighbourhood SimulationImpl::GetNeighbourhood(int i) const
 	auto y = int(parts[i].y + 0.5f);
 	auto &sd = SimulationData::CRef();
 	auto &elements = sd.elements;
+	auto &element = elements[t]; // elements is a fixed-size array; the reference stays valid
 	Neighbourhood n;
 	auto j = 0;
 	for (auto nx=-1; nx<2; nx++)
@@ -2285,9 +2286,9 @@ SimulationImpl::Neighbourhood SimulationImpl::GetNeighbourhood(int i) const
 			}
 		}
 	}
-	if (!(elements[t].Properties & TYPE_SOLID) && (elements[t].Gravity || elements[t].NewtonianGravity))
+	if (!(element.Properties & TYPE_SOLID) && (element.Gravity || element.NewtonianGravity))
 	{
-		GetGravityField(x, y, elements[t].Gravity, elements[t].NewtonianGravity, n.pGravX, n.pGravY);
+		GetGravityField(x, y, element.Gravity, element.NewtonianGravity, n.pGravX, n.pGravY);
 	}
 	return n;
 }
@@ -2316,44 +2317,50 @@ void SimulationImpl::UpdateParticles(int start, int end)
 			continue;
 		}
 
+		// elements is a fixed-size array, so a reference into it stays valid
+		// for the whole loop body; hoist it to avoid repeated index lookups
+		auto &element = elements[t];
+		auto cx = x/CELL;
+		auto cy = y/CELL;
+
 		// Kill a particle in a wall where it isn't supposed to go
-		if (bmap[y/CELL][x/CELL] &&
-		   (bmap[y/CELL][x/CELL]==WL_WALL ||
-		    bmap[y/CELL][x/CELL]==WL_WALLELEC ||
-		    bmap[y/CELL][x/CELL]==WL_ALLOWAIR ||
-		    (bmap[y/CELL][x/CELL]==WL_DESTROYALL) ||
-		    (bmap[y/CELL][x/CELL]==WL_ALLOWLIQUID && !(elements[t].Properties&TYPE_LIQUID)) ||
-		    (bmap[y/CELL][x/CELL]==WL_ALLOWPOWDER && !(elements[t].Properties&TYPE_PART)) ||
-		    (bmap[y/CELL][x/CELL]==WL_ALLOWGAS && !(elements[t].Properties&TYPE_GAS)) || //&& elements[t].Falldown!=0 && parts[i].type!=PT_FIRE && parts[i].type!=PT_SMKE && parts[i].type!=PT_CFLM) ||
-		            (bmap[y/CELL][x/CELL]==WL_ALLOWENERGY && !(elements[t].Properties&TYPE_ENERGY)) ||
-		    (bmap[y/CELL][x/CELL]==WL_EWALL && !emap[y/CELL][x/CELL])) && (t!=PT_STKM) && (t!=PT_STKM2) && (t!=PT_FIGH))
+		if (bmap[cy][cx] &&
+		   (bmap[cy][cx]==WL_WALL ||
+		    bmap[cy][cx]==WL_WALLELEC ||
+		    bmap[cy][cx]==WL_ALLOWAIR ||
+		    (bmap[cy][cx]==WL_DESTROYALL) ||
+		    (bmap[cy][cx]==WL_ALLOWLIQUID && !(element.Properties&TYPE_LIQUID)) ||
+		    (bmap[cy][cx]==WL_ALLOWPOWDER && !(element.Properties&TYPE_PART)) ||
+		    (bmap[cy][cx]==WL_ALLOWGAS && !(element.Properties&TYPE_GAS)) || //&& element.Falldown!=0 && parts[i].type!=PT_FIRE && parts[i].type!=PT_SMKE && parts[i].type!=PT_CFLM) ||
+		            (bmap[cy][cx]==WL_ALLOWENERGY && !(element.Properties&TYPE_ENERGY)) ||
+		    (bmap[cy][cx]==WL_EWALL && !emap[cy][cx])) && (t!=PT_STKM) && (t!=PT_STKM2) && (t!=PT_FIGH))
 		{
 			kill_part(i);
 			continue;
 		}
 
 		// Make sure that STASIS'd particles don't tick.
-		if (bmap[y/CELL][x/CELL] == WL_STASIS && emap[y/CELL][x/CELL]<8) {
+		if (bmap[cy][cx] == WL_STASIS && emap[cy][cx]<8) {
 			continue;
 		}
 
-		if (bmap[y/CELL][x/CELL]==WL_DETECT && emap[y/CELL][x/CELL]<8)
-			set_emap(x/CELL, y/CELL);
+		if (bmap[cy][cx]==WL_DETECT && emap[cy][cx]<8)
+			set_emap(cx, cy);
 
 		//adding to velocity from the particle's velocity
-		vx[y/CELL][x/CELL] = vx[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vx;
-		vy[y/CELL][x/CELL] = vy[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vy;
+		vx[cy][cx] = vx[cy][cx]*element.AirLoss + element.AirDrag*parts[i].vx;
+		vy[cy][cx] = vy[cy][cx]*element.AirLoss + element.AirDrag*parts[i].vy;
 
-		if (elements[t].HotAir)
+		if (element.HotAir)
 		{
 			if (t==PT_GAS||t==PT_NBLE)
 			{
-				if (pv[y/CELL][x/CELL]<3.5f)
-					pv[y/CELL][x/CELL] += 4.0f*elements[t].HotAir*(3.5f-pv[y/CELL][x/CELL]);
+				if (pv[cy][cx]<3.5f)
+					pv[cy][cx] += 4.0f*element.HotAir*(3.5f-pv[cy][cx]);
 			}
 			else//add the hotair variable to the pressure map, like black hole, or white hole.
 			{
-				pv[y/CELL][x/CELL] += 4.0f*elements[t].HotAir;
+				pv[cy][cx] += 4.0f*element.HotAir;
 			}
 		}
 
@@ -2362,18 +2369,18 @@ void SimulationImpl::UpdateParticles(int start, int end)
 		//velocity updates for the particle
 		if (t != PT_SPNG || !(parts[i].flags&FLAG_MOVABLE))
 		{
-			parts[i].vx *= elements[t].Loss;
-			parts[i].vy *= elements[t].Loss;
+			parts[i].vx *= element.Loss;
+			parts[i].vy *= element.Loss;
 		}
 		//particle gets velocity from the vx and vy maps
-		parts[i].vx += elements[t].Advection*vx[y/CELL][x/CELL] + neighbourhood.pGravX;
-		parts[i].vy += elements[t].Advection*vy[y/CELL][x/CELL] + neighbourhood.pGravY;
+		parts[i].vx += element.Advection*vx[cy][cx] + neighbourhood.pGravX;
+		parts[i].vy += element.Advection*vy[cy][cx] + neighbourhood.pGravY;
 
 
-		if (elements[t].Diffusion)//the random diffusion that gasses have
+		if (element.Diffusion)//the random diffusion that gasses have
 		{
-			parts[i].vx += elements[t].Diffusion*(2.0f*rng.uniform01()-1.0f);
-			parts[i].vy += elements[t].Diffusion*(2.0f*rng.uniform01()-1.0f);
+			parts[i].vx += element.Diffusion*(2.0f*rng.uniform01()-1.0f);
+			parts[i].vy += element.Diffusion*(2.0f*rng.uniform01()-1.0f);
 		}
 
 		auto transitionOccurred = TransitionPhase(i, neighbourhood);
@@ -2864,7 +2871,7 @@ bool SimulationImpl::TransitionPhase(int i, const Neighbourhood &neighbourhood)
 	return transitionOccurred;
 }
 
-void SimulationImpl::MovementPhase(int i, Neighbourhood neighbourhood)
+void SimulationImpl::MovementPhase(int i, const Neighbourhood &neighbourhood)
 {
 	auto &sd = SimulationData::CRef();
 	auto &elements = sd.elements;
