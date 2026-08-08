@@ -18,15 +18,7 @@ def set_output(key, value):
 		print(f"Output: {key}={value}")
 
 try:
-	try:
 	res = subprocess.run([ 'meson', 'setup', '-Dprepare=true', 'build-prepare' ], check = True, capture_output=True, text=True)
-	print("Meson stdout:", res.stdout)
-	print("Meson stderr:", res.stderr)
-except subprocess.CalledProcessError as e:
-	print("Meson failed with code:", e.returncode)
-	print("Stdout:", e.stdout)
-	print("Stderr:", e.stderr)
-	raise
 	build_options = {}
 	with open('build-prepare/meson-info/intro-buildoptions.json') as f:
 		for option in json.loads(f.read()):
@@ -147,64 +139,56 @@ except subprocess.CalledProcessError as e:
 
 	build_matrix = []
 	publish_matrix = []
-	# consider disabling line wrapping to edit this monstrosity
 	for        arch,     platform,         libc,   statdyn, bplatform,         runson, suffix,          reason, dbgsuffix,         mode,              starcatcher,    dbgrel, priority,  lint in [
-		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',       'publish',    '.dbg',         None,  'x86_64-lin-gcc-static', 'release',       10, False ),
-		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',       'publish',    '.dbg',      'steam',  'x86_64-lin-gcc-static', 'release',       -5, False ), # priority = -5: steam build
-		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',       'archive',    '.dbg',   'appimage',                     None, 'release',        0, False ), # priority = 0: appimage release
-		(  'x86_64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',       10,  True ), # the only debug job that lints; this covers the font editor and the renderer
+		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',       'publish',    '.dbg',      'steam',  'x86_64-lin-gcc-static', 'release',       -5, False ),
+		(  'x86_64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04',     '',       'archive',    '.dbg',   'appimage',                     None, 'release',        0, False ),
+		(  'x86_64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',       10,  True ),
 		(  'x86_64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,     'nohttp',                     None,   'debug',       10, False ),
 		(  'x86_64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,      'nolua',                     None,   'debug',       10, False ),
 		(  'x86_64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None, 'release',       10, False ),
-		( 'aarch64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04-arm', '',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		( 'aarch64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04-arm', '',         'check',      None,         None,                     None,   'debug',        0, False ),
 		( 'aarch64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04-arm', '',       'publish',    '.dbg',         None,   'arm64-lin-gcc-static', 'release',       10, False ),
-		( 'aarch64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04-arm', '',       'archive',    '.dbg',   'appimage',                     None, 'release',        0, False ), # priority = 0: appimage release
+		( 'aarch64',      'linux',        'gnu',  'static',   'linux', 'ubuntu-22.04-arm', '',       'archive',    '.dbg',   'appimage',                     None, 'release',        0, False ),
 		( 'aarch64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04-arm', '',         'check',      None,         None,                     None,   'debug',       10, False ),
 		( 'aarch64',      'linux',        'gnu', 'dynamic',   'linux', 'ubuntu-22.04-arm', '',         'check',      None,         None,                     None, 'release',       10, False ),
-	#	(  'x86_64',    'windows',      'mingw',  'static',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',       10, False ), # ubuntu-22.04 doesn't have windows TLS headers somehow and I haven't yet figured out how to get them; worse, it's a different toolchain
-	#	(  'x86_64',    'windows',      'mingw',  'static',   'linux', 'ubuntu-22.04',     '',       'archive',    '.dbg',         None,                     None, 'release',       10, False ), # ubuntu-22.04 doesn't have windows TLS headers somehow and I haven't yet figured out how to get them; worse, it's a different toolchain
-	#	(  'x86_64',    'windows',      'mingw', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None,   'debug',       10, False ), # ubuntu-22.04 doesn't have ucrt64-capable mingw >_>
-	#	(  'x86_64',    'windows',      'mingw', 'dynamic',   'linux', 'ubuntu-22.04',     '',         'check',      None,         None,                     None, 'release',       10, False ), # ubuntu-22.04 doesn't have ucrt64-capable mingw >_>
-		(  'x86_64',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		(  'x86_64',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(  'x86_64',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.dbg',         None,'x86_64-win-mingw-static', 'release',       10, False ),
-		(  'x86_64',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.dbg',      'steam','x86_64-win-mingw-static', 'release',       -5, False ), # priority = -5: steam build
-		(     'x86',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.dbg',         None,  'i686-win-mingw-static', 'release',       10, False ), # windows xp
-		( 'x86_old',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'archive',    '.dbg',         None,                     None, 'release',       10, False ), # windows xp, no sse, doesn't work because https://github.com/msys2/MINGW-packages/issues/24932
+		(  'x86_64',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.dbg',      'steam','x86_64-win-mingw-static', 'release',       -5, False ),
+		(     'x86',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.dbg',         None,  'i686-win-mingw-static', 'release',       10, False ),
+		( 'x86_old',    'windows',      'mingw',  'static', 'windows', 'windows-2022', '.exe',       'archive',    '.dbg',         None,                     None, 'release',       10, False ),
 		(  'x86_64',    'windows',      'mingw', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',       10, False ),
 		(  'x86_64',    'windows',      'mingw', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None, 'release',       10,  True ),
-		(  'x86_64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		(  'x86_64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(  'x86_64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',       'archive',    '.pdb',         None, 'x86_64-win-msvc-static', 'release',       10, False ),
 		(  'x86_64',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',       10, False ),
-	#	(  'x86_64',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,  'backendvs',                     None,   'debug',        0, False ), # priority = 0: backend=vs build
 		(  'x86_64',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None, 'release',       10, False ),
-		(     'x86',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		(     'x86',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(     'x86',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',       'archive',    '.pdb',         None,                     None, 'release',       10, False ),
 		(     'x86',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',       10, False ),
 		(     'x86',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None, 'release',       10, False ),
-		( 'aarch64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		( 'aarch64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',        0, False ),
 		( 'aarch64',    'windows',       'msvc',  'static', 'windows', 'windows-2022', '.exe',       'publish',    '.pdb',         None,  'arm64-win-msvc-static', 'release',       10, False ),
 		( 'aarch64',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None,   'debug',       10, False ),
 		( 'aarch64',    'windows',       'msvc', 'dynamic', 'windows', 'windows-2022', '.exe',         'check',      None,         None,                     None, 'release',       10, False ),
-		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
-		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',       'publish',      None,         None,  'x86_64-mac-gcc-static', 'release',       10, False ), # I have no idea how to separate debug info on macos
-		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',       'publish',      None,      'steam',  'x86_64-mac-gcc-static', 'release',       -5, False ), # priority = -5: steam build, see above regarding debug info
+		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',         'check',      None,         None,                     None,   'debug',        0, False ),
+		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',       'publish',      None,         None,  'x86_64-mac-gcc-static', 'release',       10, False ),
+		(  'x86_64',     'darwin',      'macos',  'static', 'darwin','macos-15-intel', '.dmg',       'publish',      None,      'steam',  'x86_64-mac-gcc-static', 'release',       -5, False ),
 		(  'x86_64',     'darwin',      'macos', 'dynamic', 'darwin','macos-15-intel', '.dmg',         'check',      None,         None,                     None,   'debug',       10, False ),
-		(  'x86_64',     'darwin',      'macos', 'dynamic', 'darwin','macos-15-intel', '.dmg',         'check',      None,         None,                     None, 'release',       10, False ), # TODO: enable lint once apple clang ships clang-tidy
-		( 'aarch64',     'darwin',      'macos',  'static',  'darwin',     'macos-15', '.dmg',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: static debug build
+		(  'x86_64',     'darwin',      'macos', 'dynamic', 'darwin','macos-15-intel', '.dmg',         'check',      None,         None,                     None, 'release',       10, False ),
+		( 'aarch64',     'darwin',      'macos',  'static',  'darwin',     'macos-15', '.dmg',         'check',      None,         None,                     None,   'debug',        0, False ),
 		( 'aarch64',     'darwin',      'macos',  'static',  'darwin',     'macos-15', '.dmg',       'publish',      None,         None,   'arm64-mac-gcc-static', 'release',       10, False ),
-	#	( 'aarch64',     'darwin',      'macos', 'dynamic',  'darwin',     'macos-15', '.dmg',         'check',      None,         None,                     None,   'debug',       10, False ), # macos-11.0 is x86_64 and I haven't yet figured out how to get homebrew to install aarch64 libs on x86_64
-	#	( 'aarch64',     'darwin',      'macos', 'dynamic',  'darwin',     'macos-15', '.dmg',         'check',      None,         None,                     None, 'release',       10, False ), # macos-11.0 is x86_64 and I haven't yet figured out how to get homebrew to install aarch64 libs on x86_64
-		(     'x86',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: rarely used debug build
+		(     'x86',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(     'x86',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',       'publish',    '.dbg',         None,    'i686-and-gcc-static', 'release',       10, False ),
-		(  'x86_64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: rarely used debug build
+		(  'x86_64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(  'x86_64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',       'publish',    '.dbg',         None,  'x86_64-and-gcc-static', 'release',       10, False ),
-		(     'arm',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: rarely used debug build
+		(     'arm',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ),
 		(     'arm',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',       'publish',    '.dbg',         None,     'arm-and-gcc-static', 'release',       10, False ),
-		( 'aarch64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: rarely used debug build
+		( 'aarch64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',         'check',      None,         None,                     None,   'debug',        0, False ),
 		( 'aarch64',    'android',     'bionic',  'static',   'linux', 'ubuntu-22.04', '.apk',       'publish',    '.dbg',         None,   'arm64-and-gcc-static', 'release',       10,  True ),
-		(  'wasm32', 'emscripten', 'emscripten',  'static',   'linux', 'ubuntu-22.04', '.tar',         'check',      None,         None,                     None,   'debug',        0, False ), # priority = 0: rarely used debug build
-		(  'wasm32', 'emscripten', 'emscripten',  'static',   'linux', 'ubuntu-22.04', '.tar',       'publish','.wasm.dbg','emscripten',      'wasm32-ems-static', 'release',       10, False ), # TODO: enable lint once emscripten ships clang-tidy
+		(  'wasm32', 'emscripten', 'emscripten',  'static',   'linux', 'ubuntu-22.04', '.tar',         'check',      None,         None,                     None,   'debug',        0, False ),
+		(  'wasm32', 'emscripten', 'emscripten',  'static',   'linux', 'ubuntu-22.04', '.tar',       'publish','.wasm.dbg','emscripten',      'wasm32-ems-static', 'release',       10, False ),
 	]:
 		if priority < do_priority:
 			continue
@@ -256,18 +240,16 @@ except subprocess.CalledProcessError as e:
 		if msys2_bash:
 			shell = 'msys2 {0}'
 		item = {
-			'bsh_build_platform': bplatform, # part of the unique portion of the matrix
-			'bsh_host_arch': arch, # part of the unique portion of the matrix
-			'bsh_host_platform': platform, # part of the unique portion of the matrix
-			'bsh_host_libc': libc, # part of the unique portion of the matrix
-			'bsh_static_dynamic': statdyn, # part of the unique portion of the matrix
-			'bsh_debug_release': dbgrel, # part of the unique portion of the matrix
+			'bsh_build_platform': bplatform,
+			'bsh_host_arch': arch,
+			'bsh_host_platform': platform,
+			'bsh_host_libc': libc,
+			'bsh_static_dynamic': statdyn,
+			'bsh_debug_release': dbgrel,
 			'bsh_lint': 'no',
 			'runs_on': runson,
 			'force_msys2_bash': msys2_bash and 'yes' or 'no',
 			'msys2_msystem': arch == 'x86_64' and 'UCRT64' or 'MINGW32',
-			# this list doesn't have to mirror the one in build.sh perfectly
-			# but the packages listed here get cached properly and take less time to install
 			'msys2_cache_install': arch == 'x86_64' and 'git curl patch mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-bzip2 mingw-w64-ucrt-x86_64-luajit mingw-w64-ucrt-x86_64-jsoncpp mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-libpng mingw-w64-ucrt-x86_64-meson mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-python-pip mingw-w64-ucrt-x86_64-fftw cmake p7zip jq' or 'git curl patch mingw-w64-i686-gcc mingw-w64-i686-meson mingw-w64-i686-python mingw-w64-i686-python-pip cmake p7zip jq',
 			'package_suffix': suffix,
 			'package_mode': mode,
@@ -294,11 +276,11 @@ except subprocess.CalledProcessError as e:
 			build_matrix.append(lint_item)
 		if publish:
 			publish_matrix.append({
-				'bsh_build_platform': bplatform, # part of the unique portion of the matrix
-				'bsh_host_arch': arch, # part of the unique portion of the matrix
-				'bsh_host_platform': platform, # part of the unique portion of the matrix
-				'bsh_host_libc': libc, # part of the unique portion of the matrix
-				'bsh_static_dynamic': statdyn, # part of the unique portion of the matrix
+				'bsh_build_platform': bplatform,
+				'bsh_host_arch': arch,
+				'bsh_host_platform': platform,
+				'bsh_host_libc': libc,
+				'bsh_static_dynamic': statdyn,
 				'asset_path': asset_path,
 				'asset_name': asset_name,
 				'starcatcher_name': starcatcher_name,
